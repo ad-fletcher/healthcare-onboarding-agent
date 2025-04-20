@@ -1,4 +1,4 @@
-app = 'agent-example'
+app = 'agent1'
 primary_region = 'iad'
 
 # As of now, the maximum kill_timeout on fly.io is 5 minutes. After
@@ -16,7 +16,7 @@ kill_timeout = "300s"
   PYTHONUNBUFFERED = '1'
 
 [[vm]]
-  memory = '4gb'
+  memory = '8gb'
   cpu_kind = 'shared'
   cpus = 2
 
@@ -26,10 +26,10 @@ kill_timeout = "300s"
   strategy = "bluegreen"
 
 # A check if required for the bluegreen deployment strategy.
-[[checks]]
-name = "healthcheck"
-type = "tcp"
-interval = "10s"
-timeout = "2s"
-grace_period = "5s"
-port = 8081  # Default health check port
+# [[checks]]
+# name = "healthcheck"
+# type = "tcp"
+# interval = "10s"
+# timeout = "2s"
+# grace_period = "5s"
+# port = 8081  # Default health check port
