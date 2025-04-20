@@ -539,13 +539,6 @@ class Assistant(Agent):
 
 
 
-eleven_tts=elevenlabs.TTS(
-      voice_id="hld2bG9cSMuILFj7P5zm",
-      model="eleven_flash_v2_5"
-   )
-
-
-
 async def entrypoint(ctx: JobContext):
     # — 1) Connect & pull metadata —
     await ctx.connect()
@@ -555,6 +548,14 @@ async def entrypoint(ctx: JobContext):
     interview_id = md.get("interviewId")
     if not (clerk_id and interview_id):
         raise RuntimeError("Missing clerk_id or interviewId in metadata")
+
+    # +++ ADD INITIALIZATION HERE +++
+    eleven_tts=elevenlabs.TTS(
+          voice_id="hld2bG9cSMuILFj7P5zm",
+          model="eleven_flash_v2_5"
+       )
+    # +++++++++++++++++++++++++++++++
+
 
     # — 2) Build your AgentSession (plain Deepgram STT) —
     session = AgentSession[MySessionInfo](
