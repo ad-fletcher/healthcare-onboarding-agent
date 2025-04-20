@@ -30,7 +30,7 @@ load_dotenv(dotenv_path='.env.local')
 
 
 # --- Health Check Server --- <--- NEW
-HEALTH_CHECK_PORT = 8081 # Port fly.toml will check
+HEALTH_CHECK_PORT = 8082 # Port fly.toml will check. Changed from 8081.
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -573,14 +573,16 @@ async def entrypoint(ctx: JobContext):
     if not (clerk_id and interview_id):
         raise RuntimeError("Missing clerk_id or interviewId in metadata")
 
+    # +++ Instantiate TTS plugin first +++
 
+    # +++++++++++++++++++++++++++++++++++
 
     # — 2) Build your AgentSession (plain Deepgram STT) —
     session = AgentSession[MySessionInfo](
         userdata=MySessionInfo(clerk_id=clerk_id, interview_id=interview_id),
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=openai.LLM(model="gpt-4.1"),
-        tts=lambda: elevenlabs.TTS(  # Defer initialization until needed
+        tts=elevenlabs.TTS(
             voice_id="hld2bG9cSMuILFj7P5zm",
             model="eleven_flash_v2_5"
         ),
