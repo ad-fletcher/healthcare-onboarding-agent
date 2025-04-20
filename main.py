@@ -580,12 +580,12 @@ async def entrypoint(ctx: JobContext):
         userdata=MySessionInfo(clerk_id=clerk_id, interview_id=interview_id),
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=openai.LLM(model="gpt-4.1"),
-        tts=lambda: elevenlabs.TTS(  # This defers creation until actually needed
+        tts=lambda: elevenlabs.TTS(  # Defer initialization until needed
             voice_id="hld2bG9cSMuILFj7P5zm",
             model="eleven_flash_v2_5"
         ),
         vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
+        turn_detection='vad',
     )
 
     # — 3) Monkey‑patch session.say → logs agent replies —
