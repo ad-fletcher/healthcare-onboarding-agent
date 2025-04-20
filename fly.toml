@@ -17,8 +17,8 @@ kill_timeout = "300s"
 
 [[vm]]
   memory = '8gb'
-  cpu_kind = 'shared'
-  cpus = 2
+  cpu_kind = 'performance'
+  cpus = 1
 
 [deploy]
   # We want to leave the previous deploy running to allow active conversations to drain
@@ -26,10 +26,13 @@ kill_timeout = "300s"
   strategy = "bluegreen"
 
 # A check if required for the bluegreen deployment strategy.
-# [[checks]]
-# name = "healthcheck"
-# type = "tcp"
-# interval = "10s"
-# timeout = "2s"
-# grace_period = "5s"
-# port = 8081  # Default health check port
+[[checks]]
+  name = "healthcheck"
+  type = "http"
+  interval = "10s"
+  timeout = "2s"
+  grace_period = "10s"
+  port = 8081
+  path = "/healthz"
+  method = "GET"
+  protocol = "http"

@@ -19,7 +19,8 @@ import httpx
 import asyncio # <--- Import asyncio
 from livekit.agents import stt
 #from livekit import ChatEventType
-
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
 
 
 
@@ -28,6 +29,29 @@ logger = logging.getLogger(__name__)
 load_dotenv(dotenv_path='.env.local')
 
 
+# --- Health Check Server --- <--- NEW
+HEALTH_CHECK_PORT = 8081 # Port fly.toml will check
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/healthz': # Standard health check path
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"ok")
+        else:
+            self.send_error(404)
+
+    def log_message(self, format, *args):
+        # Optional: Silence the health check server logs
+        return
+
+def start_health_check_server(port):
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, HealthCheckHandler)
+    logger.info(f"Health check server listening on port {port}")
+    httpd.serve_forever()
+# --- End Health Check Server ---
 
 
 CONVEX_LOG_URL = os.getenv("CONVEX_LOG_URL", "https://kindred-mosquito-333.convex.site")
@@ -549,12 +573,6 @@ async def entrypoint(ctx: JobContext):
     if not (clerk_id and interview_id):
         raise RuntimeError("Missing clerk_id or interviewId in metadata")
 
-    # +++ ADD INITIALIZATION HERE +++
-    eleven_tts=elevenlabs.TTS(
-          voice_id="hld2bG9cSMuILFj7P5zm",
-          model="eleven_flash_v2_5"
-       )
-    # +++++++++++++++++++++++++++++++
 
 
     # — 2) Build your AgentSession (plain Deepgram STT) —
@@ -562,7 +580,10 @@ async def entrypoint(ctx: JobContext):
         userdata=MySessionInfo(clerk_id=clerk_id, interview_id=interview_id),
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=openai.LLM(model="gpt-4.1"),
-        tts=eleven_tts,
+        tts=lambda: elevenlabs.TTS(  # This defers creation until actually needed
+            voice_id="hld2bG9cSMuILFj7P5zm",
+            model="eleven_flash_v2_5"
+        ),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
     )
@@ -589,6 +610,15 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
+    # Start health check server in a background thread <--- NEW
+    health_thread = threading.Thread(
+        target=start_health_check_server,
+        args=(HEALTH_CHECK_PORT,),
+        daemon=True # Ensures thread exits when main program exits
+    )
+    health_thread.start()
+
+    # Original startup code
     cli.run_app(
         agents.WorkerOptions(
             entrypoint_fnc=entrypoint,
