@@ -1,0 +1,16 @@
+# local virtualenv
+venv/
+__pycache__/
+*.pyc
+
+# git
+.git
+.gitignore
+
+# local env files & secrets
+.env.local
+env.yaml
+
+# notebooks, test files
+*.ipynb
+thinginstalled.txt
