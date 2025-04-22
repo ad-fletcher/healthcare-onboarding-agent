@@ -75,7 +75,7 @@ class ConsentCollector(Agent):
             """
         )
     async def on_enter(self) -> None:
-        await self.session.say("Welcome to your health agent. I'm Dr. Jordan. Our conversation will help create your health profile and identify preventive care opportunities, Would you like to have a quick interview or understand why these questions are being asked?")
+        await self.session.say("Welcome to your health agent.  I'm Dr. Jordan. Our conversation will help create your health profile and identify preventive care opportunities, Would you like to have a quick interview or understand why these questions are being asked?")
 
     @function_tool()
     async def on_consent_givenLong(self, context: RunContext[MySessionInfo]):
