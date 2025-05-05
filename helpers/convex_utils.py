@@ -3,6 +3,8 @@ import httpx
 import logging
 import time
 from typing import Union, Dict, Any
+import httpx, logging
+from typing import Dict, Tuple
 
 from .shared_types import CONVEX_LOG_URL, MySessionInfo # Import from the new types file
 from .data import AGGREGATE_DATA # Import AGGREGATE_DATA
@@ -101,7 +103,12 @@ def render_visualization(field: str, user_value: Union[str, int, float], intervi
         normalized_user_value = str(user_value).lower().strip()
         for key, info in mapping.items():
             # A simple case-insensitive check, comparing normalized values.
-            is_user = (normalized_user_value == key.lower().strip() or normalized_user_value == info.get("label", "").lower().strip())
+            # Safely handle None labels before calling .lower()
+            label = info.get("label")
+            is_user = (
+                normalized_user_value == key.lower().strip() or 
+                (label is not None and normalized_user_value == label.lower().strip())
+            )
             pct_value = info.get("pct")
             if pct_value is None:
                 logger.warning(f"Missing pct for key '{key}' in field '{field}' mapping.")
@@ -410,6 +417,7 @@ async def update_interview_progress(context: RunContext[MySessionInfo]) -> Dict[
             logger.error(f"Unexpected error in update_interview_progress: {e}")
             return {"status": "error", "error_message": f"Unexpected error: {e}"}
 
+
 async def get_progress(user_id: str, default_progress: Dict[str, bool]) -> dict:
     """
     Async query to Convex for which demographic fields are complete.
@@ -462,3 +470,65 @@ async def get_progress(user_id: str, default_progress: Dict[str, bool]) -> dict:
     # on any failure, return the default map passed to the function
     logger.warning(f"get_progress failed for user '{user_id}', returning default progress.")
     return default_progress 
+
+TIMEOUT = 10.0
+
+
+async def _call_convex_progress(user_id: str) -> dict | None:
+    """Low‑level fetch: returns raw JSON from /get-progress or None on error."""
+    if not user_id:
+        logger.error("get_progress called without user_id.")
+        return None
+    if not CONVEX_LOG_URL or "YOUR_CONVEX_URL" in CONVEX_LOG_URL:
+        logger.error("CONVEX_LOG_URL not set correctly.")
+        return None
+
+    url = f"{CONVEX_LOG_URL}/get-progress"
+    payload = {"user_id": user_id}
+
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(url, json=payload, timeout=TIMEOUT)
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            logger.warning(f"get_progress request failed: {e}")
+            return None
+
+
+async def get_phase_progress(
+    user_id: str,
+) -> Tuple[int | None, Dict[int, Dict[str, bool]]]:
+    """
+    Returns (earliest_incomplete_phase, phase_progress_dict).
+    On network / parsing error, returns (None, {}).
+    """
+    data = await _call_convex_progress(user_id)
+    if not data or not data.get("success"):
+        return None, {}
+
+    earliest = data.get("earliestIncompletePhase")
+    raw_map = data.get("phaseProgress", {})
+    # Convex keys come back as strings "1", "2"… ; cast to int for convenience
+    phase_map: Dict[int, Dict[str, bool]] = {
+        int(phase): {k: bool(v) for k, v in fields.items()}
+        for phase, fields in raw_map.items()
+    }
+    return earliest, phase_map
+
+
+async def get_progress_for_phase(
+    user_id: str,
+    phase: int,
+    default_progress: Dict[str, bool],
+) -> Dict[str, bool]:
+    """
+    Convenience wrapper: returns a progress‑map for *one* phase,
+    merged with its DEFAULT_PROGRESS dict so all keys are present.
+    """
+    _, phase_map = await get_phase_progress(user_id)
+    # If backend or this phase missing, fall back to defaults
+    progress = phase_map.get(phase, {})
+    merged = {**default_progress, **progress}
+    # ensure bool typing
+    return {k: bool(merged.get(k, False)) for k in default_progress}

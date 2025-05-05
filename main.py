@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 import requests
 from livekit import agents, rtc, api
-from livekit.agents import AgentSession, Agent, RoomInputOptions, JobContext, function_tool, cli, get_job_context, ChatContext, RunContext, RoomOutputOptions
+from livekit.agents import AgentSession, Agent, RoomInputOptions, JobContext, function_tool, cli, get_job_context, RunContext, RoomOutputOptions
 from livekit.plugins import openai, cartesia, deepgram, noise_cancellation, silero, elevenlabs
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 import time
@@ -15,8 +15,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 import unittest
 
+# Load environment variables from .env.local FIRST
+load_dotenv(dotenv_path='.env.local')
+
 # --- Import from new helper modules ---
-from helpers.shared_types import MySessionInfo, CONVEX_LOG_URL, DEFAULT_PROGRESS
+# Now these imports will see the loaded environment variables
+from helpers.shared_types import MySessionInfo
 from helpers.convex_utils import (
     get_user_metadata,
     render_visualization, 
@@ -24,15 +28,13 @@ from helpers.convex_utils import (
     log_message_to_convex,
     update_demographic_field, 
     update_interview_progress,
-    get_progress # Assuming get_progress was moved, add if so
+    get_progress, # Assuming get_progress was moved, add if so
+    get_phase_progress
 )
 
 
 
 logger = logging.getLogger(__name__)
-
-load_dotenv(dotenv_path='.env.local')
-
 
 # --- Health Check Server --- <--- NEW
 HEALTH_CHECK_PORT = 8082 # Port fly.toml will check. Changed from 8081.
@@ -64,90 +66,56 @@ def start_health_check_server(port):
 
 class ConsentCollector(Agent):
     def __init__(self):
+        self._boot_ran = False  # guard against double-runs
         super().__init__(
             instructions="""
-            
-            Your are a voice AI agent with the singular task to see if the user wants have a quick interview or understand why these questions are being asked.
+            Your are a voice AI agent with the singular task to see if the user is ready for their interview
 
-            Depending on their answer you will direct them to the appropriate interview, either long or short.
-            
-            After you ask what kind of interview they want, wait for a response from the user.
-
-            If the user wants to know why the questions are being asked, you will direct them with the 'on_consent_givenLong' tool.
-            If the user wants the quick interview, you will direct them with the 'on_consent_givenQuick' tool.
-
-
-
+            Based on the users phase progresss, you will direct them to the appropriate interview.
             """
         )
+
+    async def _bootstrap_user(self):
+        """Fetch metadata + phase progress once."""
+        clerk_id = self.session.userdata.clerk_id
+        logger.info(f"Fetching metadata for clerk_id: {clerk_id}")
+        meta = get_user_metadata(clerk_id)
+        logger.info(f"Retrieved metadata: {meta}")
+        user_id = meta.get("user_id")
+        earliest, all_maps = await get_phase_progress(user_id)
+
+
+        info = self.session.userdata
+        info.user_id        = user_id
+        info.name           = meta.get("name")
+        info.phase_progress = all_maps
+        info.earliest_phase = earliest
+        self._boot_ran = True
+
     async def on_enter(self) -> None:
-        await self.session.say("Welcome to your health agent.  I'm Dr. Jordan. Our conversation will help create your health profile and identify preventive care opportunities, Would you like to have a quick interview or understand why these questions are being asked?")
+        await self._bootstrap_user()     # ← RUN IT
 
-    @function_tool()
-    async def on_consent_givenLong(self, context: RunContext[MySessionInfo]):
-        """Use this tool to indicate that consent has been given and the call may proceed."""
-        # --- MOVED AssistantLong import here ---
-        from helpers.assistantLong import AssistantLong 
-        # ---------------------------------------
-        
-        clerk_id = self.session.userdata.clerk_id
-        if not clerk_id:
-            self.logger.error("Clerk ID not found in session userdata. Cannot fetch metadata.")
-            return
-
-        # Use the imported get_user_metadata function
-        meta = get_user_metadata(clerk_id)
-        if not meta or meta.get("status") == "error":
-            self.logger.error(f"Failed to get user metadata for clerk_id {clerk_id}: {meta.get('error_message', 'Unknown error')}")
-            return
-
-        user_id = meta.get("user_id")
-        name = meta.get("name")
-
-        if not user_id or not name:
-             self.session.logger.error(f"User ID or Name missing from metadata for clerk_id {clerk_id}: {meta}")
-             return
-
-        context.session.userdata.user_id = user_id
-        context.session.userdata.name    = name
-        context.session.userdata.profile = meta # Profile now contains the full metadata result
-        
-        # Instantiate AssistantLong without chat_ctx
-        return AssistantLong(context=context)
-    
+        await self.session.say("Welcome to your health agent.  I'm Dr. Jordan. Our conversation will help create your health profile and identify preventive care opportunities, Are you ready to start?")
     
     @function_tool()
-    async def on_consent_givenQuick(self, context: RunContext[MySessionInfo]):
+    async def givePhase1(self, context: RunContext[MySessionInfo]):
         """Use this tool to indicate that consent has been given and the call may proceed."""
-        # --- MOVED AssistantLong import here ---
-        from helpers.assistantQuick import AssistantQuick
 
-        # ---------------------------------------
-        
-        clerk_id = self.session.userdata.clerk_id
-        if not clerk_id:
-            self.logger.error("Clerk ID not found in session userdata. Cannot fetch metadata.")
-            return
-
-        # Use the imported get_user_metadata function
-        meta = get_user_metadata(clerk_id)
-        if not meta or meta.get("status") == "error":
-            self.logger.error(f"Failed to get user metadata for clerk_id {clerk_id}: {meta.get('error_message', 'Unknown error')}")
-            return
-
-        user_id = meta.get("user_id")
-        name = meta.get("name")
-
-        if not user_id or not name:
-             self.session.logger.error(f"User ID or Name missing from metadata for clerk_id {clerk_id}: {meta}")
-             return
-
-        context.session.userdata.user_id = user_id
-        context.session.userdata.name    = name
-        context.session.userdata.profile = meta # Profile now contains the full metadata result
+        from helpers.phase1 import phase1Agent
         
         # Instantiate AssistantLong without chat_ctx
-        return AssistantQuick(context=context)
+        return phase1Agent(context=context)
+    
+        
+    @function_tool()
+    async def givePhase2(self, context: RunContext[MySessionInfo]):
+        """Use this tool to indicate that consent has been given and the call may proceed."""
+        # --- MOVED AssistantLong import here ---
+        from helpers.phase2 import phase2Agent
+
+
+        # Instantiate AssistantLong without chat_ctx
+        return phase2Agent(context=context)
     
     @function_tool()
     async def end_call(self) -> None:
@@ -174,9 +142,16 @@ async def entrypoint(ctx: JobContext):
     # — 1) Connect & pull metadata —
     await ctx.connect()
     participant = await ctx.wait_for_participant()
-    md = json.loads(participant.metadata or "{}")
-    clerk_id     = md.get("clerk_id")
-    interview_id = md.get("interviewId")
+
+
+    interview_id = 'jd72nebkebcnae12qj0jf8ea0s7eaebn'
+    clerk_id = 'user_2wgVfwktDjgikGID2kJNDi0IqnO'
+
+
+    ### NEEED THESE
+    #md = json.loads(participant.metadata or "{}")
+    #clerk_id     = md.get("clerk_id")
+    #interview_id = md.get("interviewId")
     if not (clerk_id and interview_id):
         raise RuntimeError("Missing clerk_id or interviewId in metadata")
 

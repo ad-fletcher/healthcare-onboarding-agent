@@ -17,7 +17,7 @@ import logging # Add logging import
 
 logger = logging.getLogger(__name__) # Add logger instance
 
-class AssistantQuick(Agent):
+class phase2Agent(Agent):
     def __init__(self, context: RunContext[MySessionInfo]): # Removed chat_ctx parameter
         # Ensure context and userdata are valid
         user_name = "there" # Default value

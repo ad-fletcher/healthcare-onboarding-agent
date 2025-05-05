@@ -30,3 +30,5 @@ To deploy the latest version of your code to the configured Fly.io app (`agent1`
     ```
 
 Fly.io will build the Docker image, push it to its registry, and then deploy the new version according to the strategy defined in `fly.toml` (e.g., bluegreen). You can monitor the deployment progress in your terminal.
+
+
