@@ -220,7 +220,7 @@ class phase2Agent(Agent):
         )
 
         # mark interviewProgress = 2
-        await update_interview_progress(self.context)
+        await update_interview_progress(self.context,2 )
 
         # Close LiveKit room
         job_ctx = get_job_context()

@@ -457,7 +457,7 @@ async def update_medical_profile_field(user_id: str, field: str, value: Any) -> 
 
 
 
-async def update_interview_progress(context: RunContext[MySessionInfo]) -> Dict[str, Any]:
+async def update_interview_progress(context: RunContext[MySessionInfo], new_progress: int) -> Dict[str, Any]:
     """
     Tells our Convex HTTP route to set interviewProgress = 1 for this user.
     Uses clerk_id from the context's session userdata.
@@ -476,8 +476,7 @@ async def update_interview_progress(context: RunContext[MySessionInfo]) -> Dict[
         return {"status": "error", "message": "CONVEX_LOG_URL not configured."}
 
     url = f"{CONVEX_LOG_URL}/update-interview-progress"
-    payload = {"clerkId": clerk_id, "newProgress": 1}
-
+    payload = {"clerkId": clerk_id, "newProgress": new_progress}
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(url, json=payload, timeout=5.0)

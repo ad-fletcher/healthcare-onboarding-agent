@@ -183,7 +183,7 @@ class phase3Agent(Agent):
         await log_message_to_convex(
             self.session.userdata.interview_id, "agent", "Phase 3 completed."
         )
-        await update_interview_progress(self.context)
+        await update_interview_progress(self.context,3)
 
         job_ctx = get_job_context()
         if job_ctx and job_ctx.room:

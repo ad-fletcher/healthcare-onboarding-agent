@@ -251,7 +251,7 @@ class phase1Agent(Agent):
         )
 
         # mark interviewProgress = 1
-        await update_interview_progress(self.context)
+        await update_interview_progress(self.context, 1)
 
         # hand control back to orchestrator or close room
         job_ctx = get_job_context()
