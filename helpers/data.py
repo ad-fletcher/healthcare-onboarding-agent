@@ -199,6 +199,214 @@ AGGREGATE_DATA = {
     "lifeSatisfaction": {
         "average": 7.1
     },
+
+        "safetyEquipmentUsage": {
+        "mapping": {
+            "always":    {"label": "Always",    "pct": 30},
+            "sometimes": {"label": "Sometimes", "pct": 45},
+            "rarely":    {"label": "Rarely",    "pct": 20},
+            "never":     {"label": "Never",     "pct": 5},
+        }
+    },
+    "treatmentPreference": {
+        "mapping": {
+            "physical_therapy": {"label": "Physical Therapy First", "pct": 60},
+            "injection":        {"label": "Injection First",        "pct": 10},
+            "surgery":          {"label": "Surgical Option First",  "pct": 5},
+            "self_manage":      {"label": "Self‑Manage First",      "pct": 25},
+        }
+    },
+    "headacheStrategy": {
+        "mapping": {
+            "medication_immediately": {"label": "Medicate Immediately", "pct": 40},
+            "wait_and_see":           {"label": "Wait & See",           "pct": 35},
+            "non_medication_first":   {"label": "Non‑Medication First", "pct": 25},
+        }
+    },
+    "newTreatmentOpenness": {
+        "mapping": {
+            "try_immediately":        {"label": "Try Immediately",      "pct": 18},
+            "wait_until_established": {"label": "Wait Until Proven",    "pct": 58},
+            "stick_with_traditional": {"label": "Stick With Traditional","pct": 24},
+        }
+    },
+    "financialRisk": {
+        "mapping": {
+            "willing":   {"label": "Willing to Pay", "pct": 22},
+            "maybe":     {"label": "Maybe/Depends",  "pct": 48},
+            "unwilling": {"label": "Unwilling",      "pct": 30},
+        }
+    },
+    "preventiveCareAttitude": {
+        "mapping": {
+            "on_schedule":        {"label": "On Schedule",        "pct": 42},
+            "when_convenient":    {"label": "When Convenient",    "pct": 38},
+            "only_when_symptoms": {"label": "Only w/ Symptoms",   "pct": 20},
+        }
+    },
+    "infoVerificationStyle": {
+        "mapping": {
+            "adopt_immediately": {"label": "Adopt Immediately", "pct": 12},
+            "research_first":    {"label": "Research First",    "pct": 63},
+            "ask_provider":      {"label": "Ask Provider",      "pct": 25},
+        }
+    },
+    "chestPainResponse": {
+        "mapping": {
+            "call_ems":          {"label": "Call EMS",          "pct": 18},
+            "urgent_appointment":{"label": "Urgent Appointment","pct": 52},
+            "wait_and_see":      {"label": "Wait & See",        "pct": 30},
+        }
+    },
+    "altMedicineOpenness": {
+        "mapping": {
+            "eager":         {"label": "Very Open",      "pct": 20},
+            "somewhat_open": {"label": "Somewhat Open",  "pct": 55},
+            "not_open":      {"label": "Not Open",       "pct": 25},
+        }
+    },
+    "geneticTestingAttitude": {
+        "mapping": {
+            "eager_to_know":        {"label": "Eager to Know",        "pct": 28},
+            "cautiously_interested":{"label": "Cautiously Interested","pct": 50},
+            "prefer_not_to_know":   {"label": "Prefer Not to Know",   "pct": 22},
+        }
+    },
+
+        "healthVision": {
+        "mapping": {
+            "mobility/independence focus": {"label": "Mobility Focus",  "pct": 35},
+            "energy/vitality focus":       {"label": "Energy Focus",    "pct": 25},
+            "prevention focus":            {"label": "Prevention",      "pct": 20},
+            "balanced focus":              {"label": "Balanced",        "pct": 15},
+            "other":                       {"label": "Other",           "pct": 5},
+        }
+    },
+    "moneyRelationship": {
+        "mapping": {
+            "frugal":       {"label": "Frugal",       "pct": 30},
+            "balanced":     {"label": "Balanced",     "pct": 55},
+            "spendthrift":  {"label": "Spendthrift",  "pct": 15},
+        }
+    },
+    "timeRelationship": {
+        "mapping": {
+            "investment": {"label": "Investment", "pct": 45},
+            "neutral":    {"label": "Neutral",    "pct": 35},
+            "burden":     {"label": "Burden",     "pct": 20},
+        }
+    },
+    "agingRelationship": {
+        "mapping": {
+            "acceptance": {"label": "Acceptance", "pct": 48},
+            "avoidance":  {"label": "Avoidance",  "pct": 32},
+            "worry":      {"label": "Worry",      "pct": 20},
+        }
+    },
+    "parentInfluence": {
+        "mapping": {
+            "learn_from_mistakes": {"label": "Learn From Mistakes", "pct": 60},
+            "follow_example":      {"label": "Follow Example",      "pct": 15},
+            "neutral":             {"label": "Neutral",             "pct": 10},
+            "complex":             {"label": "Complex",             "pct": 10},
+            "other":               {"label": "Other",               "pct": 5},
+        }
+    },
+    "jobImpact": {
+        "mapping": {
+            "stress/inactivity": {"label": "Stress/Inactivity", "pct": 50},
+            "well‑being_source": {"label": "Positive Source",   "pct": 18},
+            "mixed":             {"label": "Mixed Impact",      "pct": 22},
+            "minimal":           {"label": "Minimal Impact",    "pct": 10},
+            "other":             {"label": "Other",             "pct": 0},
+        }
+    },
+    "foodRelationship": {
+        "mapping": {
+            "fuel_first":     {"label": "Fuel First",     "pct": 30},
+            "balanced":       {"label": "Balanced",       "pct": 45},
+            "pleasure_first": {"label": "Pleasure First", "pct": 25},
+            "other":          {"label": "Other",          "pct": 0},
+        }
+    },
+    "techRelationship": {
+        "mapping": {
+            "mainly_tool":        {"label": "Mainly Tool",        "pct": 40},
+            "mixed":              {"label": "Mixed",              "pct": 45},
+            "mostly_distraction": {"label": "Mostly Distraction", "pct": 15},
+            "other":              {"label": "Other",              "pct": 0},
+        }
+    },
+    "vanityRelationship": {
+        "mapping": {
+            "primary":   {"label": "Primary Motivator",   "pct": 18},
+            "secondary": {"label": "Secondary Benefit",   "pct": 55},
+            "minimal":   {"label": "Minimal",             "pct": 27},
+            "other":     {"label": "Other",               "pct": 0},
+        }
+    },
+    "mortalityPerspective": {
+        "mapping": {
+            "motivator":          {"label": "Strong Motivator",  "pct": 25},
+            "occasional_thought": {"label": "Occasional Thought","pct": 55},
+            "avoidant":           {"label": "Avoidant",          "pct": 20},
+            "other":              {"label": "Other",             "pct": 0},
+        }
+    },
+
+        "currentMedications": {
+        "mapping": {
+            True:  {"label": "Takes Regular Meds", "pct": 38},
+            False: {"label": "No Regular Meds",    "pct": 62},
+        }
+    },
+    "conditions": {
+        "mapping": {
+            True:  {"label": "Has Conditions", "pct": 29},
+            False: {"label": "None Reported",  "pct": 71},
+        }
+    },
+    "surgeries": {
+        "mapping": {
+            True:  {"label": "Has Surgical History", "pct": 22},
+            False: {"label": "No Surgeries",         "pct": 78},
+        }
+    },
+    "emergencyVisits": {
+        "mapping": {
+            True:  {"label": "Visited ER/Urgent Care", "pct": 26},
+            False: {"label": "No Visits",             "pct": 74},
+        }
+    },
+    "lastCheckup": {
+        "mapping": {
+            "within 1 year":  {"label": "< 1 yr",        "pct": 48},
+            "1-2 years ago":  {"label": "1‑2 yrs",       "pct": 28},
+            ">2 years":       {"label": "> 2 yrs",       "pct": 18},
+            "never/unsure":   {"label": "Never/Unsure",  "pct": 6},
+        }
+    },
+    "familyHistory": {
+        "mapping": {
+            True:  {"label": "Known History", "pct": 42},
+            False: {"label": "No / Unsure",   "pct": 58},
+        }
+    },
+    "mentalHealth": {
+        "mapping": {
+            "generally_good":          {"label": "Generally Good",      "pct": 46},
+            "significant_challenges":  {"label": "Significant Issues",  "pct": 18},
+            "consistently_good":       {"label": "Consistently Good",   "pct": 22},
+            "prefer_not_to_say":       {"label": "Prefer Not to Say",   "pct": 14},
+        }
+    },
+    "recordPermission": {
+        "mapping": {
+            True:  {"label": "Granted", "pct": 80},
+            False: {"label": "Declined","pct": 20},
+        }
+    },
+
 }
 
 DEFAULT_PROGRESSphase1 = {

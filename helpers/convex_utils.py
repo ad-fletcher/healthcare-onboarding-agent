@@ -369,6 +369,94 @@ async def update_demographic_field(user_id: str, field: str, value: Any) -> Dict
              logger.error(f"Unexpected error in update_demographic_field: {e}")
              return {"status": "error", "error_message": f"Unexpected error: {e}"}
 
+
+# ──────────────────────────────────────────────────────────────────────────
+# 🔄  Generic HTTP helper (shared by Phases 2‑4)
+# ──────────────────────────────────────────────────────────────────────────
+async def _post_convex_update(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Low‑level POST to Convex. Returns {"status": "...", ...}.
+    """
+    if not payload.get("user_id"):
+        logger.error(f"{endpoint} called with no user_id.")
+        return {"status": "error", "error_message": "User ID is missing."}
+
+    if not CONVEX_LOG_URL or "YOUR_CONVEX_URL" in CONVEX_LOG_URL:
+        logger.error(f"Cannot hit {endpoint}: CONVEX_LOG_URL not set correctly.")
+        return {"status": "error", "error_message": "CONVEX_LOG_URL not configured."}
+
+    url = f"{CONVEX_LOG_URL}/{endpoint}"
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(url, json=payload, timeout=5.0)
+            resp.raise_for_status()
+            logger.info(f"✅ {endpoint}: {payload['field']} saved for {payload['user_id']}")
+            try:
+                return {"status": "success", "data": resp.json()}
+            except ValueError:
+                return {"status": "success", "message": "Saved (no JSON body)"}
+
+        except httpx.RequestError as e:
+            logger.warning(f"{endpoint} network error to {url}: {e}")
+            return {"status": "error", "error_message": f"Network error: {e}"}
+
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            try:
+                body = await e.response.aread()
+                body = body.decode()
+            except Exception:
+                body = "(Could not read body)"
+            logger.warning(f"{endpoint} HTTP {status_code}: {body}")
+            return {"status": "error", "error_message": f"Server error ({status_code}): {body}"}
+
+        except Exception as e:
+            logger.error(f"Unexpected error in {endpoint}: {e}")
+            return {"status": "error", "error_message": f"Unexpected error: {e}"}
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# 🆕  Phase‑specific update helpers
+# ──────────────────────────────────────────────────────────────────────────
+async def update_risk_tolerance_field(user_id: str, field: str, value: Any) -> Dict[str, Any]:
+    """
+    Phase 2 – write to users.riskTolerance.<field>.
+    """
+    return await _post_convex_update(
+        "update-risk-tolerance",
+        {"user_id": user_id, "field": field, "value": value},
+    )
+
+
+async def update_vitality_sign_field(user_id: str, field: str, value: Any) -> Dict[str, Any]:
+    """
+    Phase 3 – write to users.vitalitySigns.<field>.
+    """
+    return await _post_convex_update(
+        "update-vitality-sign",
+        {"user_id": user_id, "field": field, "value": value},
+    )
+
+
+async def update_medical_profile_field(user_id: str, field: str, value: Any) -> Dict[str, Any]:
+    """
+    Phase 4 – write to users.medicalProfile.<field>.
+    """
+    return await _post_convex_update(
+        "update-medical-profile",
+        {"user_id": user_id, "field": field, "value": value},
+    )
+
+
+
+
+
+
+
+
+
+
+
 async def update_interview_progress(context: RunContext[MySessionInfo]) -> Dict[str, Any]:
     """
     Tells our Convex HTTP route to set interviewProgress = 1 for this user.

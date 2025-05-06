@@ -8,7 +8,6 @@ from helpers.shared_types import MySessionInfo
 from helpers.convex_utils import (
     update_demographic_field,
     render_visualization,
-    contextual_analysis_tool,
     log_message_to_convex,
     update_interview_progress,
 )

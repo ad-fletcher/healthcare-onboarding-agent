@@ -62,77 +62,133 @@ def start_health_check_server(port):
 
 
 
+# consent_collector.py
+from livekit.agents import Agent, RunContext, function_tool, get_job_context
+from livekit import api
+from helpers.shared_types import MySessionInfo
+
+from helpers.convex_utils import (
+    get_user_metadata,
+    get_phase_progress,
+)
+
+from helpers.phase1 import phase1Agent
+from helpers.phase2 import phase2Agent
+from helpers.phase3 import phase3Agent
+from helpers.phase4 import phase4Agent
 
 
 class ConsentCollector(Agent):
-    def __init__(self):
-        self._boot_ran = False  # guard against double-runs
+    """
+    Greeter + router.  It:
+    1. Looks up user’s phase progress.
+    2. Greets and asks for readiness.
+    3. On 'yes', automatically instantiates the correct phase agent (1‑4).
+       On 'no', ends the call.
+    """
+
+    def __init__(self, context):
+        self._boot_ran = False
         super().__init__(
             instructions="""
-            Your are a voice AI agent with the singular task to see if the user is ready for their interview
+            You are Dr Jordan, a warm AI assistant. 
+            First greet the user and ask if they are ready to continue their
+            health interview.  Do **not** ask any other questions.
 
-            Based on the users phase progresss, you will direct them to the appropriate interview.
-            """
+            *If the user indicates they are ready*, call the internal
+            `route_to_phase()` tool **exactly once**.  The tool already knows
+            which phase is next, you do not need to pass arguments.
+
+            *If the user says they are not ready*, politely acknowledge and
+            call `end_call()`.
+
+            Never mention tools, phases, code, or JSON aloud.
+            """,
         )
+        self.context = context
+        self.earliest_phase: int | None = None
+
+    # ───────────────────────── bootstrap ─────────────────────────
 
     async def _bootstrap_user(self):
-        """Fetch metadata + phase progress once."""
-        clerk_id = self.session.userdata.clerk_id
-        logger.info(f"Fetching metadata for clerk_id: {clerk_id}")
-        meta = get_user_metadata(clerk_id)
-        logger.info(f"Retrieved metadata: {meta}")
-        user_id = meta.get("user_id")
-        earliest, all_maps = await get_phase_progress(user_id)
+        """Fetch metadata & progress once per session."""
+        if self._boot_ran:
+            return
 
+        clerk_id = self.session.userdata.clerk_id
+        meta = get_user_metadata(clerk_id)  # sync helper
+        user_id = meta.get("user_id")
+
+        earliest, all_maps = await get_phase_progress(user_id)
 
         info = self.session.userdata
         info.user_id        = user_id
         info.name           = meta.get("name")
         info.phase_progress = all_maps
         info.earliest_phase = earliest
+
+        self.earliest_phase = earliest
         self._boot_ran = True
+        logger.info(f"Bootstrap complete → earliest_phase={earliest}")
+
+    # ───────────────────────── lifecycle ─────────────────────────
 
     async def on_enter(self) -> None:
-        await self._bootstrap_user()     # ← RUN IT
+        await self._bootstrap_user()
+        await self.session.say(
+            "Welcome! I’m Dr. Jordan. I’ll guide you through your health profile. "
+            "Are you ready to get started?"
+        )
 
-        await self.session.say("Welcome to your health agent.  I'm Dr. Jordan. Our conversation will help create your health profile and identify preventive care opportunities, Are you ready to start?")
-    
+    # ───────────────────────── routing tool ──────────────────────
+
     @function_tool()
-    async def givePhase1(self, context: RunContext[MySessionInfo]):
-        """Use this tool to indicate that consent has been given and the call may proceed."""
+    async def route_to_phase(self, context: RunContext[MySessionInfo]):
+        """
+        Internal tool – no args. Instantiates the appropriate phase agent
+        based on self.earliest_phase and transfers control.
+        """
+        phase_map = {
+            1: phase1Agent,
+            2: phase2Agent,
+            3: phase3Agent,
+            4: phase4Agent,
+        }
 
-        from helpers.phase1 import phase1Agent
-        
-        # Instantiate AssistantLong without chat_ctx
-        return phase1Agent(context=context)
-    
-        
-    @function_tool()
-    async def givePhase2(self, context: RunContext[MySessionInfo]):
-        """Use this tool to indicate that consent has been given and the call may proceed."""
-        # --- MOVED AssistantLong import here ---
-        from helpers.phase2 import phase2Agent
+        # Default when everything is complete
+        if not self.earliest_phase:
+            await self.session.say(
+                "Fantastic, all sections are already complete. Nothing more to do!"
+            )
+            await self.end_call()
+            return  # nothing to return
 
+        agent_cls = phase_map.get(self.earliest_phase)
+        if not agent_cls:
+            await self.session.say(
+                "Hmm, I’m not sure which section is next. Let’s try again later."
+            )
+            await self.end_call()
+            return
 
-        # Instantiate AssistantLong without chat_ctx
-        return phase2Agent(context=context)
-    
+        # Instantiate and return the next phase agent.
+        logger.info(f"Routing to Phase {self.earliest_phase} agent.")
+        return agent_cls(context=context)
+
+    # ───────────────────────── end‑call tool ─────────────────────
+
     @function_tool()
     async def end_call(self) -> None:
-        """Use this tool to indicate that consent has not been given and the call should end."""
-        await self.session.say("Thank you for your time, have a wonderful day.")
+        """Politely end the session and close the LiveKit room."""
+        await self.session.say("Thank you for your time. Have a wonderful day!")
         job_ctx = get_job_context()
-
-        if job_ctx and job_ctx.room and job_ctx.room.name:
+        if job_ctx and job_ctx.room:
             try:
-                await job_ctx.api.room.delete_room(api.DeleteRoomRequest(room=job_ctx.room.name))
+                await job_ctx.api.room.delete_room(
+                    api.DeleteRoomRequest(room=job_ctx.room.name)
+                )
             except Exception as e:
-                self.session.logger.error(f"Failed to delete room {job_ctx.room.name}: {e}")
-        else:
-            self.session.logger.warning("Could not delete room: Job context or room details missing.")
-
-
-
+                logger.error(f"Failed to delete room {job_ctx.room.name}: {e}")
 
 
 
@@ -164,10 +220,11 @@ async def entrypoint(ctx: JobContext):
         userdata=MySessionInfo(clerk_id=clerk_id, interview_id=interview_id),
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=openai.LLM(model="gpt-4.1"),
-        tts=elevenlabs.TTS(
-            voice_id="hld2bG9cSMuILFj7P5zm",
-            model="eleven_flash_v2_5"
-        ),
+        #tts=elevenlabs.TTS(
+        #    voice_id="hld2bG9cSMuILFj7P5zm",
+        #    model="eleven_flash_v2_5"),
+        tts=cartesia.TTS(),
+
         vad=silero.VAD.load(),
         turn_detection='vad',
     )
@@ -183,7 +240,7 @@ async def entrypoint(ctx: JobContext):
     # — 5) Start the agent as usual —
     await session.start(
         room=ctx.room,
-        agent=ConsentCollector(),
+        agent=ConsentCollector(context=ctx),
         room_input_options=RoomInputOptions(
             noise_cancellation=noise_cancellation.BVC()
         ),
