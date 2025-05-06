@@ -210,7 +210,7 @@ class phase2Agent(Agent):
         return {"status": "ok", "next_field": next_field}
 
     @function_tool()
-    async def end_call(self) -> None:
+    async def end_call(self, context: RunContext[MySessionInfo]) -> None:
         """Runs when all 10 risk‑tolerance questions are answered."""
         await self.session.say(
             "Great! That wraps up the risk‑tolerance section. Thanks for sharing."
@@ -227,7 +227,8 @@ class phase2Agent(Agent):
         if job_ctx and job_ctx.room:
             try:
                 await job_ctx.api.room.delete_room(
-                    api.DeleteRoomRequest(room=job_ctx.room.name)
+                    room=job_ctx.room.name
                 )
             except Exception as e:
-                log.error(f"Failed to delete room {job_ctx.room.name}: {e}")
+                log.error(f"Room deletion failed: {e}")
+                

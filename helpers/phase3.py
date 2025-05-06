@@ -178,7 +178,7 @@ class phase3Agent(Agent):
         return {"status": "ok", "next_field": next_field}
 
     @function_tool()
-    async def end_call(self) -> None:
+    async def end_call(self, context: RunContext[MySessionInfo]) -> None:
         await self.session.say("Wonderful! That wraps up your vitality‑signs section.")
         await log_message_to_convex(
             self.session.userdata.interview_id, "agent", "Phase 3 completed."
@@ -189,7 +189,7 @@ class phase3Agent(Agent):
         if job_ctx and job_ctx.room:
             try:
                 await job_ctx.api.room.delete_room(
-                    api.DeleteRoomRequest(room=job_ctx.room.name)
+                    room=job_ctx.room.name
                 )
             except Exception as e:
                 log.error(f"Room deletion failed: {e}")

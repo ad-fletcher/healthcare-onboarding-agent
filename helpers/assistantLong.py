@@ -135,6 +135,6 @@ class AssistantLong(Agent):
             except Exception as e:
                 logger.error(f"Failed to delete room {job_ctx.room.name} after ending call: {e}")
         else:
-            logger.warning("Could not delete room after ending call: Job context or room details missing.")
+            logger.warning("Could not delete room after ending call: Job context or room details missing.") 
 
  
