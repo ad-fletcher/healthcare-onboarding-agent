@@ -200,14 +200,14 @@ async def entrypoint(ctx: JobContext):
     participant = await ctx.wait_for_participant()
 
 
-    interview_id = 'jd72nebkebcnae12qj0jf8ea0s7eaebn'
-    clerk_id = 'user_2wgVfwktDjgikGID2kJNDi0IqnO'
+    #interview_id = 'jd72nebkebcnae12qj0jf8ea0s7eaebn'
+    #clerk_id = 'user_2wgVfwktDjgikGID2kJNDi0IqnO'
 
 
     ### NEEED THESE
-    #md = json.loads(participant.metadata or "{}")
-    #clerk_id     = md.get("clerk_id")
-    #interview_id = md.get("interviewId")
+    md = json.loads(participant.metadata or "{}")
+    clerk_id     = md.get("clerk_id")
+    interview_id = md.get("interviewId")
     if not (clerk_id and interview_id):
         raise RuntimeError("Missing clerk_id or interviewId in metadata")
 
