@@ -1,34 +1,126 @@
-# Fly.io Deployment
+# agent1
 
-This document outlines the process for deploying and updating the agent on Fly.io.
+A voice-based AI health interview agent built with [LiveKit Agents](https://docs.livekit.io/agents/), OpenAI GPT-4.1, and Convex. The agent conducts structured, multi-phase health profile interviews via real-time voice conversation.
 
-## Prerequisites
+## What It Does
 
-1.  **Fly.io Account:** Ensure you have an account at [fly.io](https://fly.io/).
-2.  **Fly CLI:** Install the Fly command-line interface. Instructions can be found [here](https://fly.io/docs/hands-on/install-flyctl/).
-3.  **Logged In:** Make sure you are logged into the Fly CLI using `fly auth login`.
-4.  **Project Setup:** This project should already be configured with a `fly.toml` and `Dockerfile`.
-5.  **Secrets:** Ensure required environment variables (like LiveKit keys) are set as secrets in Fly.io using `fly secrets set VAR1=value1 VAR2=value2 ...` or `fly secrets set $(cat .env)`.
+When a user joins a LiveKit room, the agent (Dr. Jordan) greets them and routes them to the appropriate interview phase based on their existing progress. It collects responses, validates inputs, logs everything to a Convex database, and generates data visualizations comparing answers to aggregate population distributions.
 
-## Updating the Deployment
+**4 interview phases:**
 
-To deploy the latest version of your code to the configured Fly.io app (`agent1` in this case):
+| Phase | Focus | Fields |
+|-------|-------|--------|
+| 1 | Demographics & background | Age, life stage, living arrangement, location, education, career, financial stability, social connection, health confidence, life satisfaction |
+| 2 | Risk tolerance | 8 risk-related fields |
+| 3 | Vitality & perspective | 10 vitality/outlook fields |
+| 4 | Medical profile | 8 medical history fields |
 
-1.  **Navigate to Project Directory:** Open your terminal and change to the project's root directory:
-    ```bash
-    cd /path/to/your/agent1/project
-    ```
-2.  **(Optional) Commit Changes:** It's good practice to commit your latest code changes to version control:
-    ```bash
-    git add .
-    git commit -m "Prepare for fly deployment"
-    git push # Optional, depending on your workflow
-    ```
-3.  **Deploy:** Run the deploy command. Fly.io will use the `fly.toml` and `Dockerfile` in the current directory to build and deploy your application.
-    ```bash
-    fly deploy
-    ```
+## Architecture
 
-Fly.io will build the Docker image, push it to its registry, and then deploy the new version according to the strategy defined in `fly.toml` (e.g., bluegreen). You can monitor the deployment progress in your terminal.
+```
+main.py
+├── ConsentCollector        # Greets user, fetches phase progress, routes to correct phase
+├── helpers/
+│   ├── phase1.py           # Phase 1 agent (demographics)
+│   ├── phase2.py           # Phase 2 agent (risk tolerance)
+│   ├── phase3.py           # Phase 3 agent (vitality)
+│   ├── phase4.py           # Phase 4 agent (medical profile)
+│   ├── convex_utils.py     # Convex API helpers (read/write user data, visualizations)
+│   ├── prompts.py          # System prompt strings per phase
+│   ├── data.py             # Aggregate population data for comparisons
+│   ├── shared_types.py     # MySessionInfo dataclass
+│   └── assistantLong.py    # (unused legacy)
+```
 
+**Flow:**
 
+1. Participant joins LiveKit room with `clerk_id` and `interviewId` in metadata
+2. `ConsentCollector` fetches user metadata from Convex via Clerk ID
+3. Checks phase progress and routes to the earliest incomplete phase
+4. Phase agent collects fields one at a time via voice, validates, and writes each to Convex
+5. On completion, renders a visualization and ends the room
+
+## Tech Stack
+
+| Concern | Library |
+|---------|---------|
+| Real-time voice | LiveKit Agents 1.0.13 |
+| LLM | OpenAI GPT-4.1 |
+| Speech-to-text | Deepgram nova-3 (multilingual) |
+| Text-to-speech | Cartesia |
+| Voice activity detection | Silero VAD |
+| Noise cancellation | LiveKit BVC |
+| Backend / database | Convex |
+| Auth | Clerk |
+| Deployment | Fly.io |
+
+## Setup
+
+### Prerequisites
+
+- Python 3.11+
+- A [LiveKit](https://livekit.io) project (cloud or self-hosted)
+- [Convex](https://convex.dev) project with user and interview tables
+- [Clerk](https://clerk.com) for user authentication
+- OpenAI, Deepgram, and Cartesia API keys
+
+### Install
+
+```bash
+pip install -r requirements.txt
+```
+
+### Environment Variables
+
+Create a `.env.local` file:
+
+```env
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=your_api_key
+LIVEKIT_API_SECRET=your_api_secret
+OPENAI_API_KEY=your_openai_key
+DEEPGRAM_API_KEY=your_deepgram_key
+CARTESIA_API_KEY=your_cartesia_key
+CONVEX_URL=https://your-project.convex.cloud
+```
+
+### Run Locally
+
+```bash
+python main.py dev
+```
+
+The agent connects to LiveKit as a worker and waits for participants to join. A health check server starts on port `8082`.
+
+## Deployment (Fly.io)
+
+Requires [Fly CLI](https://fly.io/docs/hands-on/install-flyctl/) and a Fly.io account.
+
+**First deploy:**
+
+```bash
+fly launch
+fly secrets set LIVEKIT_URL=... LIVEKIT_API_KEY=... LIVEKIT_API_SECRET=... OPENAI_API_KEY=... DEEPGRAM_API_KEY=... CARTESIA_API_KEY=... CONVEX_URL=...
+fly deploy
+```
+
+**Subsequent deploys:**
+
+```bash
+fly deploy
+```
+
+The `fly.toml` is already configured with a health check on `/healthz` at port 8082.
+
+## How Participants Join
+
+Participants must join the LiveKit room with the following metadata (JSON-encoded):
+
+```json
+{
+  "clerk_id": "user_xxxx",
+  "interviewId": "interview_xxxx"
+}
+```
+
+These are used to look up the user's existing progress and associate responses with the correct interview record in Convex.
