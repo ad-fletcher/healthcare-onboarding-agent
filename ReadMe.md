@@ -1,4 +1,4 @@
-# agent1
+# Healthcare Onboarding Agent
 
 A voice-based AI health interview agent built with [LiveKit Agents](https://docs.livekit.io/agents/), OpenAI GPT-4.1, and Convex. The agent conducts structured, multi-phase health profile interviews via real-time voice conversation.
 
